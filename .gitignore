@@ -1,0 +1,26 @@
+# Generated Singularity sandboxes and images
+robomimic/
+*.sif
+*.simg
+*.sandbox
+*.broken/
+
+# Runtime state
+home/
+workdir/*
+!workdir/.gitkeep
+
+# Local assistant / IDE state
+.agents/
+.codex/
+
+# Python/cache noise that may appear in mounted project trees
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Experiment/log artifacts
+wandb/
+outputs/
+runs/
+logs/
