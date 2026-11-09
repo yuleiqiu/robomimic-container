@@ -10,6 +10,7 @@ Treat this repository as a container recipe and runtime workspace, not as the ro
 - `build.sh`: builds a writable Singularity sandbox. Default name: `robomimic/`.
 - `run.sh`: runs the sandbox in contained mode for normal experiments. Default name: `robomimic/`.
 - `write.sh`: opens the sandbox in writable fakeroot mode for system-level changes. Default name: `robomimic/`.
+- `job.sh`: host-side helper that runs long jobs inside the container through `run.sh` in detached host tmux sessions, with logs in `workdir/jobs/`. For host-side maintenance; see "Agent Workflow".
 - `scripts/post_script.sh`: build-time provisioning script. It creates standard Singularity mount targets, installs apt packages, and writes image-level prompt setup.
 - `scripts/run_script.sh`: runtime shell bootstrap. It sources `~/.bashrc` if present; user-level uv initialization should live there.
 - `workdir/`: runtime work directory used by `--workdir=workdir`; with `--contain`, Singularity maps container temporary locations such as `/tmp` and `/var/tmp` into this area.
@@ -24,6 +25,7 @@ Commit the container recipe and wrapper files:
 - `build.sh`
 - `run.sh`
 - `write.sh`
+- `job.sh`
 - `scripts/post_script.sh`
 - `scripts/run_script.sh`
 - `README.md`
@@ -72,6 +74,38 @@ SANDBOX_NAME=myproject ./write.sh
 ```
 
 If changing the project name permanently, also update the image-level prompt in `scripts/post_script.sh` and the `Project` label in `Singularity`; `SANDBOX_NAME` only changes the sandbox directory used by the wrapper scripts.
+
+## Agent Workflow
+
+**Default: research agents run inside the container.** Start them from an interactive `./run.sh` shell (typically inside a host tmux window). Project docs, configs and agent memory use container paths (`/home/yulei/codes/<project>`), `uv` environments resolve correctly, and `--contain` limits what the agent can touch. Long jobs started inside the container can use the container's `tmux`/`screen` or `nohup`; background processes outlive the `run.sh` shell (checked 2026-11-09).
+
+**Host-side agents are for container maintenance only:** editing the recipe (`Singularity`, wrapper scripts, `scripts/`), rebuilding or cleaning the sandbox, and machine-level checks such as GPU use across projects. Do not do project research work from the host: agent memory and history are keyed by path, so host sessions do not see the in-container memory.
+
+When a host-side maintenance agent needs to run something in the container, it does so without an interactive shell. Verified 2026-11-09 (CUDA, MuJoCo EGL, uv project env, tectonic; job start, finish, failure, Ctrl-C stop and kill).
+
+- **Paths.** Host `home/<path>` is container `$HOME/<path>`; for example host `home/codes/constraint-il-transfer` is `~/codes/constraint-il-transfer` inside the container. Read and edit project files through the host path. Project docs written for in-container use refer to container paths.
+- **Run project code only inside the container.** The host also has `uv` on `PATH`, but project `.venv` interpreters are symlinks into the container home (`~/.local/share/uv/python/...`) and dangle on the host. Never run `uv`, project Python or project tools from the host.
+- **Short commands** (seconds to minutes): `./run.sh` with arguments runs one command and exits. The runscript sources `~/.bashrc` first, so `uv` and `tectonic` are on `PATH`:
+
+  ```bash
+  ./run.sh -- bash -c 'cd ~/codes/<project> && uv run python <script.py> ...'
+  ```
+
+- **Long jobs** (e.g. a verification run during maintenance): use `job.sh`. Each job runs in a detached tmux session `job-<name>` on the host tmux server, so it survives closing the agent session or the terminal.
+
+  ```bash
+  ./job.sh gpus                                   # check before launching; the machine is shared
+  ./job.sh start <name> 'cd ~/codes/<project> && CUDA_VISIBLE_DEVICES=0 MUJOCO_GL=egl uv run python ...'
+  ./job.sh ls                                     # running, or EXIT=<code> / EXIT=killed
+  ./job.sh log <name> [lines]                     # tail of workdir/jobs/<name>.log
+  ./job.sh stop <name>                            # Ctrl-C: the job receives SIGINT; exit code is logged
+  ./job.sh kill <name>                            # last resort: kills the tmux session
+  ```
+
+  The user can watch a job live with `./job.sh attach <name>` (detach with `Ctrl-b d`) or `./job.sh follow <name>`. Starting a name again archives the previous log as `<name>.<time>.log`.
+- **Environment.** `run.sh` does not use `--cleanenv`, so host environment variables, including the agent's own session variables, reach container processes. Set experiment variables such as `CUDA_VISIBLE_DEVICES` and `MUJOCO_GL` explicitly in the command.
+- **Temporary files.** Container `/tmp` is host `workdir/tmp/`. Job logs live in `workdir/jobs/`, which `./run.sh --clean` does not remove.
+- **Root-level changes** (`write.sh`, fakeroot) stay with the user.
 
 ## Runtime Binds
 

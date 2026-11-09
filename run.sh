@@ -60,7 +60,7 @@ else
     SHARED_DISK_BIND="--bind=${SHARED_DISK_DIR}:${SHARED_DISK_DIR}"
 fi
 
-singularity run \
+exec singularity run \
     --contain \
     ${SINGULARITY_NV_FLAG} \
     ${GITCONFIG_BIND} \

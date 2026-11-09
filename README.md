@@ -19,6 +19,7 @@ The wrapper script enables Singularity `--nv` automatically when host NVIDIA too
 - `build.sh`: builds the writable sandbox.
 - `run.sh`: starts the sandbox for normal use.
 - `write.sh`: opens a writable fakeroot shell for system-level changes.
+- `job.sh`: host-side helper that runs long jobs inside the container in detached tmux sessions, with logs.
 - `scripts/post_script.sh`: build-time package provisioning.
 - `scripts/run_script.sh`: runtime shell bootstrap.
 - `workdir/.gitkeep`: keeps the runtime workdir placeholder in Git.
@@ -66,6 +67,24 @@ Runtime state is kept in:
 
 - `home/`: mapped as the container home.
 - `workdir/`: used by Singularity `--workdir` for contained temporary paths.
+
+## Long-Running Jobs From the Host
+
+Day-to-day work happens inside the container (`./run.sh`); there, long jobs can use the container's `tmux`/`screen` or `nohup`. `job.sh` is for the host side, mainly container maintenance: it starts a command inside the container (through `run.sh`) in a detached host tmux session named `job-<name>`. The job keeps running after the terminal or an agent session closes, and its output goes to `workdir/jobs/<name>.log`.
+
+```bash
+./job.sh gpus                      # GPU memory use and running processes
+./job.sh start m0_seed1 'cd ~/codes/constraint-il-transfer && CUDA_VISIBLE_DEVICES=0 \
+    uv run python third_party/robomimic/robomimic/scripts/train.py --config <config>.json'
+./job.sh ls                        # running, or finished with EXIT=<code>
+./job.sh log m0_seed1              # last 40 lines
+./job.sh follow m0_seed1           # live log; Ctrl-C stops following only
+./job.sh attach m0_seed1           # live terminal; detach with Ctrl-b d
+./job.sh stop m0_seed1             # send Ctrl-C to the job
+./job.sh kill m0_seed1             # kill the session
+```
+
+The command runs with `bash -c` from the container home, so paths inside it are container paths (`~/codes/...`).
 
 ## Shared Data Disk
 
