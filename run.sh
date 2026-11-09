@@ -51,6 +51,17 @@ if [ -d "${HOME}/.ssh" ]; then
     SSH_BIND="--bind=${HOME}/.ssh"
 fi
 
+# Share the host Claude Code status line (script + jq), read-only, so the host
+# copy is the single source of truth. Each bind is skipped when the host file
+# is missing. Singularity creates an empty placeholder under home/ as the
+# mount point; with no bind the placeholder just yields an empty status line.
+STATUSLINE_BINDS=()
+for f in .claude/statusline.sh .local/bin/jq; do
+    if [ -f "${HOME}/${f}" ]; then
+        STATUSLINE_BINDS+=("--bind=${HOME}/${f}:${HOME}/${f}:ro")
+    fi
+done
+
 SHARED_DISK_BIND=""
 if ! mountpoint -q "${SHARED_DISK_MOUNT}"; then
     echo "WARNING: ${SHARED_DISK_MOUNT} is not mounted; skipping bind of ${SHARED_DISK_DIR}." >&2
@@ -68,6 +79,7 @@ exec singularity run \
     --bind=/etc/hosts \
     --bind=/etc/localtime \
     ${SHARED_DISK_BIND} \
+    ${STATUSLINE_BINDS[@]+"${STATUSLINE_BINDS[@]}"} \
     --workdir=workdir \
     --bind=scripts:/scripts \
     --home=home:${HOME} \
