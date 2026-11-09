@@ -83,6 +83,7 @@ If changing the project name permanently, also update the image-level prompt in 
 - optional host `${HOME}/.ssh`: convenient for private git access, but sensitive.
 - `--bind=/etc/hosts`: preserves host name resolution details.
 - `--bind=/etc/localtime`: keeps logs and timestamps aligned with the host.
+- optional host `/mnt/shared_disk/yulei` (`SHARED_DISK_DIR`, mount point `SHARED_DISK_MOUNT`): shared data disk. Bound only when the disk is actually mounted and the directory exists and is accessible; otherwise `run.sh` prints a warning and starts without it. The host automounts it via systemd (`x-systemd.automount` in `/etc/fstab`), and only the `sharedstorage` group can access it (`uid=0,gid=1006,umask=007`; set up 2026-11-09). Changing the mount or group membership needs sudo and stays with the user.
 - `--workdir=workdir`: gives contained runtime directories a host-backed location.
 - `--bind=scripts:/scripts`: makes runtime use the current repository copy of `scripts/run_script.sh` without rebuilding.
 - `--home=home:${HOME}`: maps repository-local `home/` as the container home.

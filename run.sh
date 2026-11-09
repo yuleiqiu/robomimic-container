@@ -5,6 +5,12 @@ SANDBOX_NAME="${SANDBOX_NAME:-robomimic}"
 CLEAN_WORKDIR=false
 CONTAINER_ARGS=()
 
+# Optional shared data disk. Bind it only when it is actually mounted and the
+# per-user directory exists, so a missing disk does not break container
+# creation.
+SHARED_DISK_MOUNT="${SHARED_DISK_MOUNT:-/mnt/shared_disk}"
+SHARED_DISK_DIR="${SHARED_DISK_DIR:-${SHARED_DISK_MOUNT}/yulei}"
+
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --clean)
@@ -45,6 +51,15 @@ if [ -d "${HOME}/.ssh" ]; then
     SSH_BIND="--bind=${HOME}/.ssh"
 fi
 
+SHARED_DISK_BIND=""
+if ! mountpoint -q "${SHARED_DISK_MOUNT}"; then
+    echo "WARNING: ${SHARED_DISK_MOUNT} is not mounted; skipping bind of ${SHARED_DISK_DIR}." >&2
+elif [ ! -d "${SHARED_DISK_DIR}" ]; then
+    echo "WARNING: ${SHARED_DISK_MOUNT} is mounted but ${SHARED_DISK_DIR} does not exist or is not accessible (sharedstorage group?); skipping its bind." >&2
+else
+    SHARED_DISK_BIND="--bind=${SHARED_DISK_DIR}:${SHARED_DISK_DIR}"
+fi
+
 singularity run \
     --contain \
     ${SINGULARITY_NV_FLAG} \
@@ -52,6 +67,7 @@ singularity run \
     ${SSH_BIND} \
     --bind=/etc/hosts \
     --bind=/etc/localtime \
+    ${SHARED_DISK_BIND} \
     --workdir=workdir \
     --bind=scripts:/scripts \
     --home=home:${HOME} \

@@ -67,6 +67,29 @@ Runtime state is kept in:
 - `home/`: mapped as the container home.
 - `workdir/`: used by Singularity `--workdir` for contained temporary paths.
 
+## Shared Data Disk
+
+`run.sh` bind-mounts the host shared disk directory into the container at the same path. The bind is optional: if the disk is not mounted, or the per-user directory is missing or not accessible, `run.sh` prints a warning and starts the container without it instead of failing.
+
+The mount point must be a real mount (`mountpoint -q /mnt/shared_disk`), so an empty directory left behind at that path is never bound into the container by mistake.
+
+The host mounts the disk (exFAT, USB) through systemd automount (`/etc/fstab` line with `x-systemd.automount`): it mounts on first access, also after the disk is replugged, so no `sudo` is needed. Access is limited to the `sharedstorage` group (`uid=0,gid=1006,umask=007`); group members can read and write the whole disk, everyone else is denied. To give someone access, an admin runs `sudo usermod -aG sharedstorage <user>`; the user must log out and back in (and restart any tmux server) before the new group applies. If the disk is unplugged, the first access waits up to 10 s (`x-systemd.device-timeout=10s`) before `run.sh` warns and continues.
+
+Defaults and overrides:
+
+- Mount point: `/mnt/shared_disk` (`SHARED_DISK_MOUNT`).
+- Bound directory: `/mnt/shared_disk/yulei` (`SHARED_DISK_DIR`).
+
+```bash
+SHARED_DISK_DIR=/mnt/shared_disk/someuser ./run.sh
+```
+
+Check the disk before a long run if the experiment reads datasets or writes outputs there (listing the directory triggers the automount):
+
+```bash
+ls /mnt/shared_disk/yulei >/dev/null && findmnt -t fuseblk /mnt/shared_disk
+```
+
 ## User Environment
 
 Create user-level tools and Python environments inside the container home, not in the sandbox, unless they are true system dependencies.
