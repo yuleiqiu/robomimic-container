@@ -26,7 +26,7 @@ The wrapper script enables Singularity `--nv` automatically when host NVIDIA too
 Generated runtime state is intentionally ignored:
 
 - `robomimic/`: built sandbox image directory.
-- `home/`: persistent container home, including conda/uv/codex/opencode state, shell history, source checkouts, caches, and secrets.
+- `home/`: persistent container home, including uv/codex/opencode state, shell history, source checkouts, caches, and secrets.
 - `workdir/tmp` and `workdir/var_tmp`: contained temporary directories.
 
 ## Build
@@ -94,12 +94,11 @@ git clone https://github.com/ARISE-Initiative/robomimic.git
 cd robomimic
 ```
 
-Choose the Python environment manager and package versions appropriate for the experiment. A minimal conda-style layout would be:
+Choose the Python environment manager and package versions appropriate for the experiment. A minimal uv-based layout would be:
 
 ```bash
-conda create -y -n robomimic python=3.10
-conda activate robomimic
-pip install -e .
+uv venv --python 3.10
+uv pip install -e .
 ```
 
 After installing PyTorch, verify CUDA from inside the active environment:

@@ -11,10 +11,10 @@ Treat this repository as a container recipe and runtime workspace, not as the ro
 - `run.sh`: runs the sandbox in contained mode for normal experiments. Default name: `robomimic/`.
 - `write.sh`: opens the sandbox in writable fakeroot mode for system-level changes. Default name: `robomimic/`.
 - `scripts/post_script.sh`: build-time provisioning script. It creates standard Singularity mount targets, installs apt packages, and writes image-level prompt setup.
-- `scripts/run_script.sh`: runtime shell bootstrap. It sources `~/.bashrc` if present; user-level conda initialization should live there.
+- `scripts/run_script.sh`: runtime shell bootstrap. It sources `~/.bashrc` if present; user-level uv initialization should live there.
 - `workdir/`: runtime work directory used by `--workdir=workdir`; with `--contain`, Singularity maps container temporary locations such as `/tmp` and `/var/tmp` into this area.
 - `robomimic/`: generated sandbox image directory. It is build output and may be deleted/rebuilt.
-- `home/`: generated/persistent container home. It may contain conda envs, source checkouts, caches, W&B state, experiment outputs, and secrets. Inspect before deleting.
+- `home/`: generated/persistent container home. It may contain uv envs, source checkouts, caches, W&B state, experiment outputs, and secrets. Inspect before deleting.
 
 ## Version Control Boundaries
 
@@ -117,7 +117,7 @@ mkdir -p home workdir
 
 Before deleting `home/`, inspect it carefully. It may contain:
 
-- `home/.conda`
+- `home/.local/share/uv`
 - `home/.cache`
 - source checkouts such as `home/codes/robomimic`
 - W&B logs

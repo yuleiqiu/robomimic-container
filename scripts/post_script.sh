@@ -30,7 +30,16 @@ apt-get update && apt-get install -y --no-install-recommends \
 # Keep shell prompt consistent with other container templates.
 CUSTOM_ENV=/.singularity.d/env/99-zz_custom_env.sh
 cat >"${CUSTOM_ENV}" <<'EOF'
-#!/bin/bash
-PS1="[robomimic] Singularity> \w \$ "
+#!/bin/sh
+PS1='[robomimic] Singularity> \w \$ '
 EOF
 chmod 755 "${CUSTOM_ENV}"
+
+# Provide a proper login shell for the host user (yulei, uid 1001).
+# Singularity injects a passwd entry with an EMPTY shell field when the
+# user is absent from the container passwd. A login shell (e.g. a new tmux
+# window, which starts "-bash") then falls back to /bin/sh mode, and
+# /etc/profile sets the bare PS1='$ ' prompt instead of the fancy one.
+if ! grep -q '^yulei:' /etc/passwd; then
+    echo 'yulei:x:1001:1001:yulei,,,:/home/yulei:/bin/bash' >> /etc/passwd
+fi
